@@ -1,8 +1,10 @@
 import requests
 import time
-import json
 import os
+from threading import Thread
+from flask import Flask
 
+app = Flask(__name__)
 
 # Replace with your bot token from BotFather
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -95,62 +97,79 @@ def get_sme_closed_ipos():
         "🔗 [View Details](https://example.com/ipo/edusmart)"
     )
 
-def main():
+@app.route('/')
+def health_check():
+    return "IPOnowBot is running!"
+
+def run_bot():
     offset = None
     print("Bot is running...")
-    
+   
     while True:
-        updates = get_updates(offset)
-        
-        if updates["ok"]:
-            for update in updates["result"]:
-                offset = update["update_id"] + 1
-                
-                if "message" in update:
-                    chat_id = update["message"]["chat"]["id"]
-                    message_text = update["message"].get("text", "")
+        try:
+            updates = get_updates(offset)
+            
+            if updates["ok"]:
+                for update in updates["result"]:
+                    offset = update["update_id"] + 1
                     
-                    # Simple echo bot - responds with the same message
-                    if message_text:
-                      if message_text == "/start":
-                        welcome_text = (
-                            "👋 *Welcome to IPO Info Bot\\!* \n\n"
-                            "Stay updated with the latest *Mainboard* and *SME* IPOs in India\\.\n"
-                            "Browse IPOs by category and status using the options below:"
-                        )
+                    if "message" in update:
+                        chat_id = update["message"]["chat"]["id"]
+                        message_text = update["message"].get("text", "")
+                        
+                        # Simple echo bot - responds with the same message
+                        if message_text:
+                          if message_text == "/start":
+                            welcome_text = (
+                                "👋 *Welcome to IPO Info Bot\\!* \n\n"
+                                "Stay updated with the latest *Mainboard* and *SME* IPOs in India\\.\n"
+                                "Browse IPOs by category and status using the options below:"
+                            )
+    
+                            buttons = [
+                                "Mainboard: Current IPOs",
+                                "Mainboard: Upcoming IPOs",
+                                "Mainboard: Closed IPOs",
+                                "SME: Current IPOs",
+                                "SME: Upcoming IPOs",
+                                "SME: Closed IPOs"
+                            ]
+                            send_message(chat_id, welcome_text, buttons)
+                          
+                          elif message_text == "Mainboard: Current IPOs":
+                              send_message(chat_id, get_mainboard_current_ipos())
+    
+                          elif message_text == "Mainboard: Upcoming IPOs":
+                              send_message(chat_id, get_mainboard_upcoming_ipos())
+    
+                          elif message_text == "Mainboard: Closed IPOs":
+                              send_message(chat_id, get_mainboard_closed_ipos())
+    
+                          elif message_text == "SME: Current IPOs":
+                              send_message(chat_id, get_sme_current_ipos())
+    
+                          elif message_text == "SME: Upcoming IPOs":
+                              send_message(chat_id, get_sme_upcoming_ipos())
+    
+                          elif message_text == "SME: Closed IPOs":
+                              send_message(chat_id, get_sme_closed_ipos())
+                          else:
+                              send_message(chat_id, f"You said: {message_text}")
 
-                        buttons = [
-                            "Mainboard: Current IPOs",
-                            "Mainboard: Upcoming IPOs",
-                            "Mainboard: Closed IPOs",
-                            "SME: Current IPOs",
-                            "SME: Upcoming IPOs",
-                            "SME: Closed IPOs"
-                        ]
-                        send_message(chat_id, welcome_text, buttons)
-                      
-                      elif message_text == "Mainboard: Current IPOs":
-                          send_message(chat_id, get_mainboard_current_ipos())
+            time.sleep(1)
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)
 
-                      elif message_text == "Mainboard: Upcoming IPOs":
-                          send_message(chat_id, get_mainboard_upcoming_ipos())
-
-                      elif message_text == "Mainboard: Closed IPOs":
-                          send_message(chat_id, get_mainboard_closed_ipos())
-
-                      elif message_text == "SME: Current IPOs":
-                          send_message(chat_id, get_sme_current_ipos())
-
-                      elif message_text == "SME: Upcoming IPOs":
-                          send_message(chat_id, get_sme_upcoming_ipos())
-
-                      elif message_text == "SME: Closed IPOs":
-                          send_message(chat_id, get_sme_closed_ipos())
-                      else:
-                          send_message(chat_id, f"You said: {message_text}")
-
-        
-        time.sleep(1)
+def main():
+    # Start bot in background thread
+    bot_thread = Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    # Start Flask web server
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 
 if __name__ == "__main__":
     main()

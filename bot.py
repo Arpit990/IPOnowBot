@@ -4,7 +4,7 @@ import json
 
 
 # Replace with your bot token from BotFather
-BOT_TOKEN = "8377576200:AAH19W2ZWB4YB84hE7uqmcm2rKKm2e5Z1e8"
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
 API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 def get_updates(offset=None):
